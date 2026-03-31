@@ -5,25 +5,6 @@ __metadata:
   version: 6
   cacheKey: 8
 
-"@apple/app-store-server-library@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "@apple/app-store-server-library@workspace:."
-  dependencies:
-    "@cloudflare/workers-types": ^4.20260329.1
-    "@peculiar/x509": ^1.12.0
-    "@types/jest": ^30.0.0
-    "@types/jsonwebtoken": ^9.0.5
-    "@types/node-fetch": ^2.6.13
-    jest: ^30.0.5
-    jose: ^5.9.0
-    jsonwebtoken: ^9.0.2
-    node-fetch: 2
-    ts-jest: ^29.1.1
-    typedoc: ^0.28.7
-    typescript: ^5.3.3
-  languageName: unknown
-  linkType: soft
-
 "@babel/code-frame@npm:^7.0.0, @babel/code-frame@npm:^7.27.1, @babel/code-frame@npm:^7.28.6, @babel/code-frame@npm:^7.29.0":
   version: 7.29.0
   resolution: "@babel/code-frame@npm:7.29.0"
@@ -1074,6 +1055,25 @@ __metadata:
   checksum: e5f5e07ff4c5788d954252418d38598b10d96e9f0f9ebdebf0cb4fef4efd6b7b8d5801f7eb8e475361d6180c71f60db3af71322383493a6f72fc36f494431610
   languageName: node
   linkType: hard
+
+"@studium-ignotum/app-store-server-library@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "@studium-ignotum/app-store-server-library@workspace:."
+  dependencies:
+    "@cloudflare/workers-types": ^4.20260329.1
+    "@peculiar/x509": ^1.12.0
+    "@types/jest": ^30.0.0
+    "@types/jsonwebtoken": ^9.0.5
+    "@types/node-fetch": ^2.6.13
+    jest: ^30.0.5
+    jose: ^5.9.0
+    jsonwebtoken: ^9.0.2
+    node-fetch: 2
+    ts-jest: ^29.1.1
+    typedoc: ^0.28.7
+    typescript: ^5.3.3
+  languageName: unknown
+  linkType: soft
 
 "@tybys/wasm-util@npm:^0.10.0":
   version: 0.10.1
