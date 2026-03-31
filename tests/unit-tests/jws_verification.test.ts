@@ -1,7 +1,7 @@
 // Copyright (c) 2023 Apple Inc. Licensed under MIT License.
 
 import assert = require("assert");
-import { KeyObject, X509Certificate } from "crypto";
+import { X509Certificate } from "@peculiar/x509";
 import { SignedDataVerifier, VerificationException, VerificationStatus } from "../../jws_verification";
 import { Environment } from "../../models/Environment";
 import { readFile, getSignedPayloadVerifierWithDefaultAppAppleId, getDefaultSignedPayloadVerifier } from "../util";
@@ -23,33 +23,38 @@ const REAL_APPLE_SIGNING_CERTIFICATE_BASE64_ENCODED = "MIIEMTCCA7agAwIBAgIQR8KHz
 const EFFECTIVE_DATE = new Date(1761962975000); // October 2025
 
 const CLOCK_DATE = 41231
+function base64ToUint8Array(b64: string): Uint8Array {
+    const binary = atob(b64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return bytes
+}
+
 class SignedJWTVerifierTest extends SignedDataVerifier {
     effectiveDate = EFFECTIVE_DATE
-    async testVerifyCertificateChain(trustedRoots: X509Certificate[], leaf: string, intermediate: string): Promise<KeyObject> {
-        return await this.verifyCertificateChain(trustedRoots, new X509Certificate(Buffer.from(leaf, 'base64')), new X509Certificate(Buffer.from(intermediate, 'base64')), this.effectiveDate)
+    async testVerifyCertificateChain(trustedRoots: X509Certificate[], leaf: string, intermediate: string): Promise<CryptoKey> {
+        return await this.verifyCertificateChain(trustedRoots, new X509Certificate(base64ToUint8Array(leaf)), new X509Certificate(base64ToUint8Array(intermediate)), this.effectiveDate)
     }
 
-    public async verifyCertificateChainWithoutCaching(trustedRoots: X509Certificate[], leaf: X509Certificate, intermediate: X509Certificate, effectiveDate: Date): Promise<KeyObject> {
+    public async verifyCertificateChainWithoutCaching(trustedRoots: X509Certificate[], leaf: X509Certificate, intermediate: X509Certificate, effectiveDate: Date): Promise<CryptoKey> {
         return await super.verifyCertificateChainWithoutCaching(trustedRoots, leaf, intermediate, effectiveDate)
     }
 
     getRootCertificates() {
         return this.rootCertificates
-    } 
+    }
 }
 
 describe("Chain Verification Checks", () => {
     it('should validate a chain without OCSP', async () => {
-        const verifier = new SignedJWTVerifierTest([Buffer.from(ROOT_CA_BASE64_ENCODED, 'base64')], false, Environment.PRODUCTION, "com.example", 1234);
+        const verifier = new SignedJWTVerifierTest([base64ToUint8Array(ROOT_CA_BASE64_ENCODED)], false, Environment.PRODUCTION, "com.example", 1234);
         const publicKey = await verifier.testVerifyCertificateChain(verifier.getRootCertificates(), LEAF_CERT_BASE64_ENCODED, INTERMEDIATE_CA_BASE64_ENCODED)
-        expect(Buffer.from(LEAF_CERT_PUBLIC_KEY_BASE64_ENCODED, 'base64')).toMatchObject(publicKey.export({
-            type: 'spki',
-            format: 'der'
-        }))
+        const exportedKey = new Uint8Array(await crypto.subtle.exportKey('spki', publicKey) as ArrayBuffer)
+        expect(exportedKey).toEqual(base64ToUint8Array(LEAF_CERT_PUBLIC_KEY_BASE64_ENCODED))
     })
 
     it('should fail to validate a chain with an invalid intermediate OID', async () => {
-        const verifier = new SignedJWTVerifierTest([Buffer.from(ROOT_CA_BASE64_ENCODED, 'base64')], false, Environment.PRODUCTION, "com.example", 1234);
+        const verifier = new SignedJWTVerifierTest([base64ToUint8Array(ROOT_CA_BASE64_ENCODED)], false, Environment.PRODUCTION, "com.example", 1234);
         try {
             await verifier.testVerifyCertificateChain(verifier.getRootCertificates(), LEAF_CERT_FOR_INTERMEDIATE_CA_INVALID_OID_BASE64_ENCODED, INTERMEDIATE_CA_INVALID_OID_BASE64_ENCODED)
             assert(false)
@@ -60,7 +65,7 @@ describe("Chain Verification Checks", () => {
     })
 
     it('should fail to validate a chain with an invalid leaf OID', async () => {
-        const verifier = new SignedJWTVerifierTest([Buffer.from(ROOT_CA_BASE64_ENCODED, 'base64')], false, Environment.PRODUCTION, "com.example", 1234);
+        const verifier = new SignedJWTVerifierTest([base64ToUint8Array(ROOT_CA_BASE64_ENCODED)], false, Environment.PRODUCTION, "com.example", 1234);
         try {
             await verifier.testVerifyCertificateChain(verifier.getRootCertificates(), LEAF_CERT_INVALID_OID_BASE64_ENCODED, INTERMEDIATE_CA_BASE64_ENCODED)
             assert(false)
@@ -82,7 +87,7 @@ describe("Chain Verification Checks", () => {
     })
 
     it('should fail to validate a chain with an expired chain', async () => {
-        const verifier = new SignedJWTVerifierTest([Buffer.from(ROOT_CA_BASE64_ENCODED, 'base64')], false, Environment.PRODUCTION, "com.example", 1234);
+        const verifier = new SignedJWTVerifierTest([base64ToUint8Array(ROOT_CA_BASE64_ENCODED)], false, Environment.PRODUCTION, "com.example", 1234);
         verifier.effectiveDate = new Date(2280946846000)
         try {
             await verifier.testVerifyCertificateChain(verifier.getRootCertificates(), LEAF_CERT_BASE64_ENCODED, INTERMEDIATE_CA_BASE64_ENCODED)
@@ -94,12 +99,12 @@ describe("Chain Verification Checks", () => {
     })
 
     it('should validate a real chain with OCSP', async () => {
-        const verifier = new SignedJWTVerifierTest([Buffer.from(REAL_APPLE_ROOT_BASE64_ENCODED, 'base64')], true, Environment.PRODUCTION, "com.example", 1234);
+        const verifier = new SignedJWTVerifierTest([base64ToUint8Array(REAL_APPLE_ROOT_BASE64_ENCODED)], true, Environment.PRODUCTION, "com.example", 1234);
         await verifier.testVerifyCertificateChain(verifier.getRootCertificates(), REAL_APPLE_SIGNING_CERTIFICATE_BASE64_ENCODED, REAL_APPLE_INTERMEDIATE_BASE64_ENCODED)
     })
 
     it('should fail to validate a chain with mismatched root certificates', async () => {
-        const verifier = new SignedJWTVerifierTest([Buffer.from(REAL_APPLE_ROOT_BASE64_ENCODED, 'base64')], false, Environment.PRODUCTION, "com.example", 1234);
+        const verifier = new SignedJWTVerifierTest([base64ToUint8Array(REAL_APPLE_ROOT_BASE64_ENCODED)], false, Environment.PRODUCTION, "com.example", 1234);
         try {
             await verifier.testVerifyCertificateChain(verifier.getRootCertificates(), LEAF_CERT_BASE64_ENCODED, INTERMEDIATE_CA_BASE64_ENCODED)
             assert(false)
@@ -112,7 +117,7 @@ describe("Chain Verification Checks", () => {
 
     it('should fail to validate a chain with invalid root certificates', async () => {
         try {
-            const verifier = new SignedJWTVerifierTest([Buffer.from("abc", "utf-8")], false, Environment.PRODUCTION, "com.example", 1234);
+            const verifier = new SignedJWTVerifierTest([new TextEncoder().encode("abc")], false, Environment.PRODUCTION, "com.example", 1234);
             await verifier.testVerifyCertificateChain(verifier.getRootCertificates(), LEAF_CERT_BASE64_ENCODED, INTERMEDIATE_CA_BASE64_ENCODED)
         } catch (e) {
             return
@@ -123,8 +128,8 @@ describe("Chain Verification Checks", () => {
     it('should cache OCSP responses', async () => {
         jest.useFakeTimers()
         jest.setSystemTime(CLOCK_DATE)
-        const verifier = new SignedJWTVerifierTest([Buffer.from(ROOT_CA_BASE64_ENCODED, 'base64')], true, Environment.PRODUCTION, "com.example", 1234);
-        let spy = jest.spyOn(verifier, 'verifyCertificateChainWithoutCaching').mockImplementation((_, _2, _3, _4) => Promise.resolve(new X509Certificate(Buffer.from(LEAF_CERT_BASE64_ENCODED, 'base64')).publicKey));
+        const verifier = new SignedJWTVerifierTest([base64ToUint8Array(ROOT_CA_BASE64_ENCODED)], true, Environment.PRODUCTION, "com.example", 1234);
+        let spy = jest.spyOn(verifier, 'verifyCertificateChainWithoutCaching').mockImplementation((_, _2, _3, _4) => new X509Certificate(base64ToUint8Array(LEAF_CERT_BASE64_ENCODED)).publicKey.export());
         await verifier.testVerifyCertificateChain(verifier.getRootCertificates(), LEAF_CERT_BASE64_ENCODED, INTERMEDIATE_CA_BASE64_ENCODED)
         expect(spy).toHaveBeenCalledTimes(1);
         jest.setSystemTime(CLOCK_DATE + 1_000) // 1 second
@@ -137,8 +142,8 @@ describe("Chain Verification Checks", () => {
     it('should cache OCSP responses for a limited time', async () => {
         jest.useFakeTimers()
         jest.setSystemTime(CLOCK_DATE)
-        const verifier = new SignedJWTVerifierTest([Buffer.from(ROOT_CA_BASE64_ENCODED, 'base64')], true, Environment.PRODUCTION, "com.example", 1234);
-        let spy = jest.spyOn(verifier, 'verifyCertificateChainWithoutCaching').mockImplementation((_, _2, _3, _4) => Promise.resolve(new X509Certificate(Buffer.from(LEAF_CERT_BASE64_ENCODED, 'base64')).publicKey));
+        const verifier = new SignedJWTVerifierTest([base64ToUint8Array(ROOT_CA_BASE64_ENCODED)], true, Environment.PRODUCTION, "com.example", 1234);
+        let spy = jest.spyOn(verifier, 'verifyCertificateChainWithoutCaching').mockImplementation((_, _2, _3, _4) => new X509Certificate(base64ToUint8Array(LEAF_CERT_BASE64_ENCODED)).publicKey.export());
         await verifier.testVerifyCertificateChain(verifier.getRootCertificates(), LEAF_CERT_BASE64_ENCODED, INTERMEDIATE_CA_BASE64_ENCODED)
         expect(spy).toHaveBeenCalledTimes(1);
         jest.setSystemTime(CLOCK_DATE + 15 * 60 * 1_000) // 15 minutes
@@ -151,8 +156,8 @@ describe("Chain Verification Checks", () => {
     it('should not return cached OCSP responses for a different chain', async () => {
         jest.useFakeTimers()
         jest.setSystemTime(CLOCK_DATE)
-        const verifier = new SignedJWTVerifierTest([Buffer.from(ROOT_CA_BASE64_ENCODED, 'base64')], true, Environment.PRODUCTION, "com.example", 1234);
-        let spy = jest.spyOn(verifier, 'verifyCertificateChainWithoutCaching').mockImplementation((_, _2, _3, _4) => Promise.resolve(new X509Certificate(Buffer.from(LEAF_CERT_BASE64_ENCODED, 'base64')).publicKey));
+        const verifier = new SignedJWTVerifierTest([base64ToUint8Array(ROOT_CA_BASE64_ENCODED)], true, Environment.PRODUCTION, "com.example", 1234);
+        let spy = jest.spyOn(verifier, 'verifyCertificateChainWithoutCaching').mockImplementation((_, _2, _3, _4) => new X509Certificate(base64ToUint8Array(LEAF_CERT_BASE64_ENCODED)).publicKey.export());
         await verifier.testVerifyCertificateChain(verifier.getRootCertificates(), LEAF_CERT_BASE64_ENCODED, INTERMEDIATE_CA_BASE64_ENCODED)
         expect(spy).toHaveBeenCalledTimes(1);
         jest.setSystemTime(CLOCK_DATE + 15 * 60 * 1_000) // 15 minutes
@@ -165,8 +170,8 @@ describe("Chain Verification Checks", () => {
     it('should not return cached OCSP responses for a slightly different chain', async () => {
         jest.useFakeTimers()
         jest.setSystemTime(CLOCK_DATE)
-        const verifier = new SignedJWTVerifierTest([Buffer.from(ROOT_CA_BASE64_ENCODED, 'base64')], true, Environment.PRODUCTION, "com.example", 1234);
-        let spy = jest.spyOn(verifier, 'verifyCertificateChainWithoutCaching').mockImplementation((_, _2, _3, _4) => Promise.resolve(new X509Certificate(Buffer.from(LEAF_CERT_BASE64_ENCODED, 'base64')).publicKey));
+        const verifier = new SignedJWTVerifierTest([base64ToUint8Array(ROOT_CA_BASE64_ENCODED)], true, Environment.PRODUCTION, "com.example", 1234);
+        let spy = jest.spyOn(verifier, 'verifyCertificateChainWithoutCaching').mockImplementation((_, _2, _3, _4) => new X509Certificate(base64ToUint8Array(LEAF_CERT_BASE64_ENCODED)).publicKey.export());
         await verifier.testVerifyCertificateChain(verifier.getRootCertificates(), LEAF_CERT_BASE64_ENCODED, INTERMEDIATE_CA_BASE64_ENCODED)
         expect(spy).toHaveBeenCalledTimes(1);
         jest.setSystemTime(CLOCK_DATE + 15 * 60 * 1_000) // 15 minutes

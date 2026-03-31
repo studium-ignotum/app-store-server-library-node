@@ -8,9 +8,10 @@
     "experimentalDecorators": true,
     "incremental": true,
     "lib": [
-      "es2020"
+      "es2022"
     ],
     "module": "CommonJS",
+    "types": ["@cloudflare/workers-types", "@types/jest"],
     "newLine": "lf",
     "noEmitOnError": true,
     "noFallthroughCasesInSwitch": true,
@@ -25,7 +26,7 @@
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
     "stripInternal": false,
-    "target": "ES2020",
+    "target": "ES2022",
     "composite": false,
     "tsBuildInfoFile": "tsconfig.tsbuildinfo",
     "outDir": "dist"

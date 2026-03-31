@@ -22,10 +22,9 @@ import { RefundPreference } from "../../models/RefundPreference";
 import { RefundPreferenceV1 } from "../../models/RefundPreferenceV1";
 import { APIError, APIException, AppStoreServerAPIClient, ExtendReasonCode, ExtendRenewalDateRequest, GetTransactionHistoryVersion, MassExtendRenewalDateRequest, NotificationHistoryRequest, NotificationHistoryResponseItem, Order, OrderLookupStatus, ProductType, SendAttemptResult, TransactionHistoryRequest } from "../../index";
 import { Response } from "node-fetch";
-
 import jsonwebtoken = require('jsonwebtoken');
 
-type callbackType = (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => void
+type callbackType = (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => void
 
 class AppStoreServerAPIClientForTest extends AppStoreServerAPIClient {
 
@@ -39,9 +38,9 @@ class AppStoreServerAPIClientForTest extends AppStoreServerAPIClient {
         this.body = body
         this.statusCode = statusCode
     }
-    protected async makeFetchRequest(path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }): Promise<Response> {
+    protected async makeFetchRequest(path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }): Promise<any> {
         // Check Content-Type based on body type
-        if (requestBody instanceof Buffer) {
+        if (requestBody instanceof Uint8Array) {
             expect(headers['Content-Type']).toBe('image/png')
         } else if (requestBody !== undefined) {
             expect(typeof requestBody).toBe('string')
@@ -82,7 +81,7 @@ function getSigningKey(): string {
 describe('The api client ', () => {
     
     it('calls extendRenewalDateForAllActiveSubscribers', async () => {
-       const client = getClientWithBody("tests/resources/models/extendRenewalDateForAllActiveSubscribersResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getClientWithBody("tests/resources/models/extendRenewalDateForAllActiveSubscribersResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("POST").toBe(method)
             expect("/inApps/v1/subscriptions/extend/mass").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -112,7 +111,7 @@ describe('The api client ', () => {
     })
 
     it('calls extendSubscriptionRenewalDate', async () => {
-       const client = getClientWithBody("tests/resources/models/extendSubscriptionRenewalDateResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getClientWithBody("tests/resources/models/extendSubscriptionRenewalDateResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("PUT").toBe(method)
             expect("/inApps/v1/subscriptions/extend/4124214").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -141,7 +140,7 @@ describe('The api client ', () => {
     })
 
     it('calls getAllSubscriptionStatuses', async () => {
-       const client = getClientWithBody("tests/resources/models/getAllSubscriptionStatusesResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getClientWithBody("tests/resources/models/getAllSubscriptionStatusesResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("GET").toBe(method)
             expect("/inApps/v1/subscriptions/4321").toBe(path)
             expect(["2", "1"]).toStrictEqual(parsedQueryParameters.getAll("status"))
@@ -189,7 +188,7 @@ describe('The api client ', () => {
     })
 
     it('calls getRefundHistory', async () => {
-       const client = getClientWithBody("tests/resources/models/getRefundHistoryResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getClientWithBody("tests/resources/models/getRefundHistoryResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("GET").toBe(method)
             expect("/inApps/v2/refund/lookup/555555").toBe(path)
             expect("revision_input").toBe(parsedQueryParameters.get("revision"))
@@ -205,7 +204,7 @@ describe('The api client ', () => {
     })
 
     it('calls getStatusOfSubscriptionRenewalDateExtensions', async () => {
-       const client = getClientWithBody("tests/resources/models/getStatusOfSubscriptionRenewalDateExtensionsResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getClientWithBody("tests/resources/models/getStatusOfSubscriptionRenewalDateExtensionsResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("GET").toBe(method)
             expect("/inApps/v1/subscriptions/extend/mass/20fba8a0-2b80-4a7d-a17f-85c1854727f8/com.example.product").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -223,7 +222,7 @@ describe('The api client ', () => {
     })
 
     it('calls getTestNotificationStatus', async () => {
-       const client = getClientWithBody("tests/resources/models/getTestNotificationStatusResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getClientWithBody("tests/resources/models/getTestNotificationStatusResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("GET").toBe(method)
             expect("/inApps/v1/notifications/test/8cd2974c-f905-492a-bf9a-b2f47c791d19").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -248,7 +247,7 @@ describe('The api client ', () => {
     })
 
     it('calls getNotificationHistoryResponse', async () => {
-       const client = getClientWithBody("tests/resources/models/getNotificationHistoryResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getClientWithBody("tests/resources/models/getNotificationHistoryResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("POST").toBe(method)
             expect("/inApps/v1/notifications/history").toBe(path)
             expect("a036bc0e-52b8-4bee-82fc-8c24cb6715d6").toBe(parsedQueryParameters.get("paginationToken"))
@@ -305,7 +304,7 @@ describe('The api client ', () => {
     })
 
     it('calls getTransactionHistory V1', async () => {
-       const client = getClientWithBody("tests/resources/models/transactionHistoryResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getClientWithBody("tests/resources/models/transactionHistoryResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("GET").toBe(method)
             expect("/inApps/v1/history/1234").toBe(path)
             expect("revision_input").toBe(parsedQueryParameters.get("revision"))
@@ -343,7 +342,7 @@ describe('The api client ', () => {
     })
 
     it('calls getTransactionHistory V2', async () => {
-        const client = getClientWithBody("tests/resources/models/transactionHistoryResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getClientWithBody("tests/resources/models/transactionHistoryResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
              expect("GET").toBe(method)
              expect("/inApps/v2/history/1234").toBe(path)
              expect("revision_input").toBe(parsedQueryParameters.get("revision"))
@@ -381,7 +380,7 @@ describe('The api client ', () => {
      })
 
     it('calls getTransactionInfo', async () => {
-       const client = getClientWithBody("tests/resources/models/transactionInfoResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getClientWithBody("tests/resources/models/transactionInfoResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("GET").toBe(method)
             expect("/inApps/v1/transactions/1234").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -395,7 +394,7 @@ describe('The api client ', () => {
     })
 
     it('calls lookUpOrderId', async () => {
-       const client = getClientWithBody("tests/resources/models/lookupOrderIdResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getClientWithBody("tests/resources/models/lookupOrderIdResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("GET").toBe(method)
             expect("/inApps/v1/lookup/W002182").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -410,7 +409,7 @@ describe('The api client ', () => {
     })
 
     it('calls requestTestNotification', async () => {
-       const client = getClientWithBody("tests/resources/models/requestTestNotificationResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getClientWithBody("tests/resources/models/requestTestNotificationResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("POST").toBe(method)
             expect("/inApps/v1/notifications/test").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -424,7 +423,7 @@ describe('The api client ', () => {
     })
 
     it('calls sendConsumptionData', async () => {
-       const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("PUT").toBe(method)
             expect("/inApps/v1/transactions/consumption/49571273").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -465,7 +464,7 @@ describe('The api client ', () => {
     })
 
     it('calls sendConsumptionInformation with all fields', async () => {
-       const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("PUT").toBe(method)
             expect("/inApps/v2/transactions/consumption/49571273").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -492,7 +491,7 @@ describe('The api client ', () => {
     })
 
     it('calls sendConsumptionInformation with only required fields', async () => {
-       const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+       const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("PUT").toBe(method)
             expect("/inApps/v2/transactions/consumption/49571273").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -517,7 +516,7 @@ describe('The api client ', () => {
     })
 
     it('calls getTransactionInfo but receives a general internal error', async () => {
-        const client = getClientWithBody("tests/resources/models/apiException.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getClientWithBody("tests/resources/models/apiException.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
              expect("GET").toBe(method)
              expect("/inApps/v1/transactions/1234").toBe(path)
              expect(parsedQueryParameters.entries.length).toBe(0)
@@ -536,7 +535,7 @@ describe('The api client ', () => {
      })
 
      it('calls getTransactionInfo but receives a rate limit exceeded error', async () => {
-        const client = getClientWithBody("tests/resources/models/apiTooManyRequestsException.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getClientWithBody("tests/resources/models/apiTooManyRequestsException.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
              expect("GET").toBe(method)
              expect("/inApps/v1/transactions/1234").toBe(path)
              expect(parsedQueryParameters.entries.length).toBe(0)
@@ -555,7 +554,7 @@ describe('The api client ', () => {
      })
 
      it('calls getTransactionInfo but receives an unknown/new error code', async () => {
-        const client = getClientWithBody("tests/resources/models/apiUnknownError.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getClientWithBody("tests/resources/models/apiUnknownError.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
              expect("GET").toBe(method)
              expect("/inApps/v1/transactions/1234").toBe(path)
              expect(parsedQueryParameters.entries.length).toBe(0)
@@ -574,7 +573,7 @@ describe('The api client ', () => {
      })
 
      it('calls getTransactionHistory but receives an unknown environment', async () => {
-        const client = getClientWithBody("tests/resources/models/transactionHistoryResponseWithMalformedEnvironment.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getClientWithBody("tests/resources/models/transactionHistoryResponseWithMalformedEnvironment.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
         });
 
         const request: TransactionHistoryRequest = {
@@ -593,7 +592,7 @@ describe('The api client ', () => {
      })
 
      it('calls getTransactionHistory but receives a malformed appAppleId', async () => {
-        const client = getClientWithBody("tests/resources/models/transactionHistoryResponseWithMalformedAppAppleId.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getClientWithBody("tests/resources/models/transactionHistoryResponseWithMalformedAppAppleId.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
         });
 
         const request: TransactionHistoryRequest = {
@@ -627,7 +626,7 @@ describe('The api client ', () => {
      })
 
     it('calls setAppAccountToken', async () => {
-        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("PUT").toBe(method)
             expect("/inApps/v1/transactions/49571273/appAccountToken").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -646,7 +645,7 @@ describe('The api client ', () => {
     })
 
     it('calls setAppAccountToken but receives an invalid UUID error', async () => {
-        const client = getClientWithBody("tests/resources/models/invalidAppAccountTokenUUIDError.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getClientWithBody("tests/resources/models/invalidAppAccountTokenUUIDError.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("PUT").toBe(method)
             expect("/inApps/v1/transactions/49571273/appAccountToken").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -668,7 +667,7 @@ describe('The api client ', () => {
     })
 
     it('calls setAppAccountToken but receives family transaction not supported error', async () => {
-        const client = getClientWithBody("tests/resources/models/familyTransactionNotSupportedError.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getClientWithBody("tests/resources/models/familyTransactionNotSupportedError.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("PUT").toBe(method)
             expect("/inApps/v1/transactions/1234/appAccountToken").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -690,7 +689,7 @@ describe('The api client ', () => {
     })
 
     it('calls setAppAccountToken but transactionId not originalTransactionId error', async () => {
-        const client = getClientWithBody("tests/resources/models/transactionIdNotOriginalTransactionId.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getClientWithBody("tests/resources/models/transactionIdNotOriginalTransactionId.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("PUT").toBe(method)
             expect("/inApps/v1/transactions/1234/appAccountToken").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -712,20 +711,20 @@ describe('The api client ', () => {
     })
 
     it('calls uploadImage', async () => {
-        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("PUT").toBe(method)
             expect("/inApps/v1/messaging/image/a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
             expect(requestBody).toBeTruthy()
-            expect(requestBody).toBeInstanceOf(Buffer)
-            expect(Buffer.from([1, 2, 3])).toEqual(requestBody)
+            expect(requestBody).toBeInstanceOf(Uint8Array)
+            expect(new Uint8Array([1, 2, 3])).toEqual(requestBody)
         });
 
-        await client.uploadImage("a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890", Buffer.from([1, 2, 3]))
+        await client.uploadImage("a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890", new Uint8Array([1, 2, 3]))
     })
 
     it('calls deleteImage', async () => {
-        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("DELETE").toBe(method)
             expect("/inApps/v1/messaging/image/a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -736,7 +735,7 @@ describe('The api client ', () => {
     })
 
     it('calls getImageList', async () => {
-        const client = getClientWithBody("tests/resources/models/getImageListResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getClientWithBody("tests/resources/models/getImageListResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("GET").toBe(method)
             expect("/inApps/v1/messaging/image/list").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -753,7 +752,7 @@ describe('The api client ', () => {
     })
 
     it('calls uploadMessage', async () => {
-        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("PUT").toBe(method)
             expect("/inApps/v1/messaging/message/a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -774,7 +773,7 @@ describe('The api client ', () => {
     })
 
     it('calls uploadMessage with image', async () => {
-        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("PUT").toBe(method)
             expect("/inApps/v1/messaging/message/a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -801,7 +800,7 @@ describe('The api client ', () => {
     })
 
     it('calls deleteMessage', async () => {
-        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("DELETE").toBe(method)
             expect("/inApps/v1/messaging/message/a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -812,7 +811,7 @@ describe('The api client ', () => {
     })
 
     it('calls getMessageList', async () => {
-        const client = getClientWithBody("tests/resources/models/getMessageListResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getClientWithBody("tests/resources/models/getMessageListResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("GET").toBe(method)
             expect("/inApps/v1/messaging/message/list").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -829,7 +828,7 @@ describe('The api client ', () => {
     })
 
     it('calls configureDefaultMessage', async () => {
-        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("PUT").toBe(method)
             expect("/inApps/v1/messaging/default/com.example.product/en-US").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -847,7 +846,7 @@ describe('The api client ', () => {
     })
 
     it('calls deleteDefaultMessage', async () => {
-        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getAppStoreServerAPIClient("", 200, (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
             expect("DELETE").toBe(method)
             expect("/inApps/v1/messaging/default/com.example.product/en-US").toBe(path)
             expect(parsedQueryParameters.entries.length).toBe(0)
@@ -858,7 +857,7 @@ describe('The api client ', () => {
     })
 
     it('calls getAppTransactionInfo', async () => {
-        const client = getClientWithBody("tests/resources/models/appTransactionInfoResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+        const client = getClientWithBody("tests/resources/models/appTransactionInfoResponse.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
              expect("GET").toBe(method)
              expect("/inApps/v1/transactions/appTransactions/1234").toBe(path)
              expect(parsedQueryParameters.entries.length).toBe(0)
@@ -872,7 +871,7 @@ describe('The api client ', () => {
      })
 
      it('calls getAppTransactionInfo but receives invalid transaction id error', async () => {
-         const client = getClientWithBody("tests/resources/models/invalidTransactionIdError.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+         const client = getClientWithBody("tests/resources/models/invalidTransactionIdError.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
               expect("GET").toBe(method)
               expect("/inApps/v1/transactions/appTransactions/invalid_id").toBe(path)
               expect(parsedQueryParameters.entries.length).toBe(0)
@@ -891,7 +890,7 @@ describe('The api client ', () => {
       })
 
       it('calls getAppTransactionInfo but receives app transaction does not exist error', async () => {
-         const client = getClientWithBody("tests/resources/models/appTransactionDoesNotExistError.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+         const client = getClientWithBody("tests/resources/models/appTransactionDoesNotExistError.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
               expect("GET").toBe(method)
               expect("/inApps/v1/transactions/appTransactions/5678").toBe(path)
               expect(parsedQueryParameters.entries.length).toBe(0)
@@ -910,7 +909,7 @@ describe('The api client ', () => {
       })
 
       it('calls getAppTransactionInfo but receives transaction id not found error', async () => {
-         const client = getClientWithBody("tests/resources/models/transactionIdNotFoundError.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) => {
+         const client = getClientWithBody("tests/resources/models/transactionIdNotFoundError.json", (path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) => {
               expect("GET").toBe(method)
               expect("/inApps/v1/transactions/appTransactions/9999").toBe(path)
               expect(parsedQueryParameters.entries.length).toBe(0)

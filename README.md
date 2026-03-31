@@ -1,139 +1,147 @@
-# Apple App Store Server Node.js Library
-The Node.js server library for the [App Store Server API](https://developer.apple.com/documentation/appstoreserverapi), [App Store Server Notifications](https://developer.apple.com/documentation/appstoreservernotifications), and [Retention Messaging API](https://developer.apple.com/documentation/retentionmessaging). Also available in [Swift](https://github.com/apple/app-store-server-library-swift), [Python](https://github.com/apple/app-store-server-library-python), and [Java](https://github.com/apple/app-store-server-library-java).
+# Apple App Store Server Library — Workers Fork
 
-## Table of Contents
-1. [Installation](#installation)
-2. [Documentation](#documentation)
-3. [Usage](#usage)
-4. [Support](#support)
+Fork of [`@apple/app-store-server-library-node`](https://github.com/apple/app-store-server-library-node) (v3.0.0), rewritten to run natively on **Cloudflare Workers** and any WebCrypto-compatible runtime.
+
+Covers the [App Store Server API](https://developer.apple.com/documentation/appstoreserverapi), [App Store Server Notifications V2](https://developer.apple.com/documentation/appstoreservernotifications), and [Retention Messaging API](https://developer.apple.com/documentation/retentionmessaging).
+
+## What changed from upstream
+
+| Upstream (Node.js) | This fork (Workers) |
+|---|---|
+| `jsonwebtoken` | `jose` |
+| `jsrsasign` (X509, ASN1HEX, OCSP) | `@peculiar/x509` + manual DER parser |
+| `crypto` (X509Certificate, KeyObject, createHash, verify) | `@peculiar/x509` + `crypto.subtle` |
+| `node-fetch` | native `fetch` |
+| `Buffer` | `Uint8Array` / `atob` / `btoa` |
+| `base64url` | manual base64url |
+
+OCSP revocation checking is fully implemented using manual DER encoding/decoding and `crypto.subtle` for signature verification — no Node.js crypto dependencies.
+
+### Production dependencies
+
+```
+jose              ^5.9.0
+@peculiar/x509    ^1.12.0
+```
+
+Zero Node.js-specific dependencies. Both packages work on Workers, Deno, Bun, and browsers.
 
 ## Installation
 
-### Requirements
-
-- Node 16+
-
-### NPM/Yarn
 ```bash
-# With NPM
-npm install @apple/app-store-server-library --save
-# With Yarn
-yarn add @apple/app-store-server-library
+# npm
+npm install @studium-ignotum/app-store-server-library
+
+# yarn
+yarn add @studium-ignotum/app-store-server-library
+
+# pnpm
+pnpm add @studium-ignotum/app-store-server-library
 ```
 
-## Documentation
+Or install directly from GitHub:
 
-[Documentation](https://apple.github.io/app-store-server-library-node/)
+```bash
+# npm
+npm install github:studium-ignotum/app-store-server-library-node
 
-[WWDC Video](https://developer.apple.com/videos/play/wwdc2023/10143/)
+# yarn
+yarn add studium-ignotum/app-store-server-library-node
 
-### Obtaining an In-App Purchase key from App Store Connect
+# pnpm
+pnpm add github:studium-ignotum/app-store-server-library-node
+```
 
-To use the App Store Server API or create promotional offer signatures, a signing key downloaded from App Store Connect is required. To obtain this key, you must have the Admin role. Go to Users and Access > Integrations > In-App Purchase. Here you can create and manage keys, as well as find your issuer ID. When using a key, you'll need the key ID and issuer ID as well.
-
-### Obtaining Apple Root Certificates
-
-Download and store the root certificates found in the Apple Root Certificates section of the [Apple PKI](https://www.apple.com/certificateauthority/) site. Provide these certificates as an array to a SignedDataVerifier to allow verifying the signed data comes from Apple.
+Requires a runtime with Web Crypto API (`crypto.subtle`) and native `fetch`.
 
 ## Usage
 
-### API Usage
+### API Client
 
 ```typescript
-import { AppStoreServerAPIClient, Environment, SendTestNotificationResponse } from "@apple/app-store-server-library"
+import { AppStoreServerAPIClient, Environment } from "@studium-ignotum/app-store-server-library"
 
-const issuerId = "99b16628-15e4-4668-972b-eeff55eeff55"
-const keyId = "ABCDEFGHIJ"
-const bundleId = "com.example"
-const filePath = "/path/to/key/SubscriptionKey_ABCDEFGHIJ.p8"
-const encodedKey = readFile(filePath) // Specific implementation may vary
-const environment = Environment.SANDBOX
+const client = new AppStoreServerAPIClient(
+  encodedKey, keyId, issuerId, bundleId, Environment.SANDBOX
+)
 
-const client = new AppStoreServerAPIClient(encodedKey, keyId, issuerId, bundleId, environment)
-
-try {
-    const response: SendTestNotificationResponse = await client.requestTestNotification()
-    console.log(response)
-} catch (e) {
-    console.error(e)
-}
+const response = await client.requestTestNotification()
 ```
 
-### Verification Usage
+### Verify Signed Data (JWS)
 
 ```typescript
-import { SignedDataVerifier } from "@apple/app-store-server-library"
+import { SignedDataVerifier, Environment } from "@studium-ignotum/app-store-server-library"
 
-const bundleId = "com.example"
-const appleRootCAs: Buffer[] = loadRootCAs() // Specific implementation may vary
-const enableOnlineChecks = true
-const environment = Environment.SANDBOX
-const appAppleId = undefined // appAppleId is required when the environment is Production
-const verifier = new SignedDataVerifier(appleRootCAs, enableOnlineChecks, environment, bundleId, appAppleId)
+const rootCAs: Uint8Array[] = [appleRootG3DER]  // DER-encoded Apple root certificates
+const verifier = new SignedDataVerifier(rootCAs, true, Environment.PRODUCTION, bundleId, appAppleId)
 
-const notificationPayload = "ey..."
-const verifiedNotification = await verifier.verifyAndDecodeNotification(notificationPayload)
-console.log(verifiedNotification)
+const notification = await verifier.verifyAndDecodeNotification(signedPayload)
 ```
 
-### Receipt Usage
+> Constructor accepts `Uint8Array[]` (not `Buffer[]`). `Buffer` still works at runtime since it extends `Uint8Array`.
+
+### Receipt Utility
 
 ```typescript
-import { AppStoreServerAPIClient, Environment, GetTransactionHistoryVersion, ReceiptUtility, Order, ProductType, HistoryResponse, TransactionHistoryRequest } from "@apple/app-store-server-library"
+import { ReceiptUtility } from "@studium-ignotum/app-store-server-library"
 
-const issuerId = "99b16628-15e4-4668-972b-eeff55eeff55"
-const keyId = "ABCDEFGHIJ"
-const bundleId = "com.example"
-const filePath = "/path/to/key/SubscriptionKey_ABCDEFGHIJ.p8"
-const encodedKey = readFile(filePath) // Specific implementation may vary
-const environment = Environment.SANDBOX
-
-const client =
-        new AppStoreServerAPIClient(encodedKey, keyId, issuerId, bundleId, environment)
-
-const appReceipt = "MI..."
 const receiptUtil = new ReceiptUtility()
 const transactionId = receiptUtil.extractTransactionIdFromAppReceipt(appReceipt)
-if (transactionId != null) {
-    const transactionHistoryRequest: TransactionHistoryRequest = {
-        sort: Order.ASCENDING,
-        revoked: false,
-        productTypes: [ProductType.AUTO_RENEWABLE]
-    }
-    let response: HistoryResponse | null = null
-    let transactions: string[] = []
-    do {
-        const revisionToken = response !== null && response.revision !== null ? response.revision : null
-        response = await client.getTransactionHistory(transactionId, revisionToken, transactionHistoryRequest, GetTransactionHistoryVersion.V2)
-        if (response.signedTransactions) {
-            transactions = transactions.concat(response.signedTransactions)
-        }
-    } while (response.hasMore)
-    console.log(transactions)
+```
+
+### Promotional Offer Signature
+
+```typescript
+import { PromotionalOfferSignatureCreator } from "@studium-ignotum/app-store-server-library"
+
+const creator = new PromotionalOfferSignatureCreator(encodedKey, keyId, bundleId)
+const signature = await creator.createSignature(productId, offerId, appAccountToken, nonce, timestamp)
+```
+
+> `createSignature` is now **async** (returns `Promise<string>`).
+
+### Cloudflare Workers Example
+
+```typescript
+import { AppStoreServerAPIClient, SignedDataVerifier, Environment } from "@studium-ignotum/app-store-server-library"
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const verifier = new SignedDataVerifier(
+      [base64ToUint8Array(env.APPLE_ROOT_CA_G3)],
+      true,
+      Environment.PRODUCTION,
+      env.BUNDLE_ID,
+      Number(env.APP_APPLE_ID)
+    )
+
+    const { signedPayload } = await request.json<{ signedPayload: string }>()
+    const notification = await verifier.verifyAndDecodeNotification(signedPayload)
+
+    return Response.json({ type: notification.notificationType })
+  }
 }
 ```
 
-### Promotional Offer Signature Creation
+## API Changes from Upstream
 
-```typescript
-import { PromotionalOfferSignatureCreator } from "@apple/app-store-server-library"
+| Method / Constructor | Change |
+|---|---|
+| `new SignedDataVerifier(certs, ...)` | `certs` type: `Buffer[]` → `Uint8Array[]` |
+| `verifyCertificateChain(...)` | Returns `Promise<CryptoKey>` instead of `Promise<KeyObject>` |
+| `PromotionalOfferSignatureCreator.createSignature(...)` | Now **async** — returns `Promise<string>` |
+| `PromotionalOfferV2SignatureCreator.createSignature(...)` | Now **async** — returns `Promise<string>` |
+| `IntroductoryOfferEligibilitySignatureCreator.createSignature(...)` | Now **async** — returns `Promise<string>` |
+| `AdvancedCommerceInAppSignatureCreator.createSignature(...)` | Now **async** — returns `Promise<string>` |
+| `AppStoreServerAPIClient.uploadImage(id, image)` | `image` type: `Buffer` → `Uint8Array` |
 
-const keyId = "ABCDEFGHIJ"
-const bundleId = "com.example"
-const filePath = "/path/to/key/SubscriptionKey_ABCDEFGHIJ.p8"
-const encodedKey = readFile(filePath) // Specific implementation may vary
+All other public APIs remain unchanged.
 
-const productId = "<product_id>"
-const subscriptionOfferId = "<subscription_offer_id>"
-const appAccountToken = "<app_account_token>"
-const nonce = "<nonce>"
-const timestamp = Date.now()
-const signatureCreator = new PromotionalOfferSignatureCreator(encodedKey, keyId, bundleId)
+## Obtaining Apple Root Certificates
 
-const signature = signatureCreator.createSignature(productId, subscriptionOfferId, appAccountToken, nonce, timestamp)
-console.log(signature)
-```
+Download the root certificates from the [Apple PKI](https://www.apple.com/certificateauthority/) site (Apple Root Certificates section). Store them as DER-encoded `Uint8Array` values and pass to `SignedDataVerifier`.
 
-## Support
+## License
 
-Only the latest major version of the library will receive updates, including security updates. Therefore, it is recommended to update to new major versions.
+MIT — see [LICENSE.txt](LICENSE.txt). Original library by Apple Inc.

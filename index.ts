@@ -1,6 +1,5 @@
 // Copyright (c) 2023 Apple Inc. Licensed under MIT License.
 
-import fetch from 'node-fetch';
 import { CheckTestNotificationResponse, CheckTestNotificationResponseValidator } from './models/CheckTestNotificationResponse';
 import { ConsumptionRequest } from './models/ConsumptionRequest';
 import { ConsumptionRequestV1 } from './models/ConsumptionRequestV1';
@@ -107,11 +106,10 @@ export { DecodedSignedData } from './models/DecodedSignedData'
 export { AppTransaction } from './models/AppTransaction'
 export { ExternalPurchaseToken } from './models/ExternalPurchaseToken'
 
-import jsonwebtoken = require('jsonwebtoken');
+import { SignJWT, importPKCS8 } from 'jose';
 import { AppTransactionInfoResponse, AppTransactionInfoResponseValidator } from './models/AppTransactionInfoResponse';
 import { NotificationHistoryRequest } from './models/NotificationHistoryRequest';
 import { NotificationHistoryResponse, NotificationHistoryResponseValidator } from './models/NotificationHistoryResponse';
-import { URLSearchParams } from 'url';
 
 export class AppStoreServerAPIClient {
     private static PRODUCTION_URL = "https://api.storekit.itunes.apple.com";
@@ -153,10 +151,10 @@ export class AppStoreServerAPIClient {
         }
     }
 
-    protected async makeRequest<T>(path: string, method: string, queryParameters: { [key: string]: string[]}, body: object | Buffer | null, validator: Validator<T> | null, contentType?: string): Promise<T> {
+    protected async makeRequest<T>(path: string, method: string, queryParameters: { [key: string]: string[]}, body: object | Uint8Array | null, validator: Validator<T> | null, contentType?: string): Promise<T> {
         const headers: { [key: string]: string } = {
             'User-Agent': AppStoreServerAPIClient.USER_AGENT,
-            'Authorization': 'Bearer ' + this.createBearerToken(),
+            'Authorization': 'Bearer ' + await this.createBearerToken(),
             'Accept': 'application/json',
         }
         const parsedQueryParameters = new URLSearchParams()
@@ -165,8 +163,8 @@ export class AppStoreServerAPIClient {
                 parsedQueryParameters.append(queryParam, queryVal)
             }
         }
-        let requestBody: string | Buffer | undefined = undefined
-        if (body instanceof Buffer) {
+        let requestBody: string | Uint8Array | undefined = undefined
+        if (body instanceof Uint8Array) {
             requestBody = body
             if (contentType) {
                 headers['Content-Type'] = contentType
@@ -184,7 +182,7 @@ export class AppStoreServerAPIClient {
                 return null as T
             }
 
-            const responseBody = await response.json()
+            const responseBody = await response.json() as any
 
             if (!validator.validate(responseBody)) {
                 throw new Error("Unexpected response body format")
@@ -194,7 +192,7 @@ export class AppStoreServerAPIClient {
         }
 
         try {
-            const responseBody = await response.json()
+            const responseBody = await response.json() as any
             const errorCode = responseBody['errorCode']
             const errorMessage = responseBody['errorMessage']
 
@@ -212,7 +210,7 @@ export class AppStoreServerAPIClient {
         }
     }
 
-    protected async makeFetchRequest(path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Buffer | undefined, headers: { [key: string]: string; }) {
+    protected async makeFetchRequest(path: string, parsedQueryParameters: URLSearchParams, method: string, requestBody: string | Uint8Array | undefined, headers: { [key: string]: string; }) {
         return await fetch(this.urlBase + path + '?' + parsedQueryParameters, {
             method: method,
             body: requestBody,
@@ -445,7 +443,7 @@ export class AppStoreServerAPIClient {
      * @throws APIException If a response was returned indicating the request could not be processed
      * {@link https://developer.apple.com/documentation/retentionmessaging/upload-image Upload Image}
      */
-    public async uploadImage(imageIdentifier: string, image: Buffer): Promise<void> {
+    public async uploadImage(imageIdentifier: string, image: Uint8Array): Promise<void> {
         await this.makeRequest("/inApps/v1/messaging/image/" + imageIdentifier, "PUT", {}, image, null, 'image/png');
     }
 
@@ -542,11 +540,14 @@ export class AppStoreServerAPIClient {
          return await this.makeRequest("/inApps/v1/transactions/appTransactions/" + transactionId, "GET", {}, null, new AppTransactionInfoResponseValidator(), undefined);
      }
 
-    private createBearerToken(): string {
-        const payload = {
-            bid: this.bundleId
-        }
-        return jsonwebtoken.sign(payload, this.signingKey, { algorithm: 'ES256', keyid: this.keyId, issuer: this.issuerId, audience: 'appstoreconnect-v1', expiresIn: '5m'});
+    private async createBearerToken(): Promise<string> {
+        const privateKey = await importPKCS8(this.signingKey, 'ES256')
+        return await new SignJWT({ bid: this.bundleId })
+            .setProtectedHeader({ alg: 'ES256', kid: this.keyId })
+            .setIssuer(this.issuerId)
+            .setAudience('appstoreconnect-v1')
+            .setExpirationTime('5m')
+            .sign(privateKey)
     }
 }
 

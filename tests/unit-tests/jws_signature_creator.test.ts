@@ -11,7 +11,7 @@ interface TestInAppRequest extends AdvancedCommerceInAppRequest {
 describe("JWS Signature Creator Checks", () => {
     it('should create a promotional offer signature', async () => {
         const signatureCreator = new PromotionalOfferV2SignatureCreator(readFile('tests/resources/certs/testSigningKey.p8'), "keyId", "issuerId", "bundleId");
-        const signature = signatureCreator.createSignature('productId', 'offerIdentifier', 'transactionId')
+        const signature = await signatureCreator.createSignature('productId', 'offerIdentifier', 'transactionId')
         expect(signature).toBeTruthy()
         let header = JSON.parse(Buffer.from(signature.split('.')[0], 'base64url').toString())
         let payload = JSON.parse(Buffer.from(signature.split('.')[1], 'base64url').toString())
@@ -34,14 +34,14 @@ describe("JWS Signature Creator Checks", () => {
 
     it('should create a promotional offer signature without a transaction id', async () => {
         const signatureCreator = new PromotionalOfferV2SignatureCreator(readFile('tests/resources/certs/testSigningKey.p8'), "keyId", "issuerId", "bundleId");
-        const signature = signatureCreator.createSignature('productId', 'offerIdentifier')
+        const signature = await signatureCreator.createSignature('productId', 'offerIdentifier')
         let payload = JSON.parse(Buffer.from(signature.split('.')[1], 'base64url').toString())
         expect(payload['transactionId']).toBeUndefined()
     })
 
     it('should create a introductory eligibility offer signature', async () => {
         const signatureCreator = new IntroductoryOfferEligibilitySignatureCreator(readFile('tests/resources/certs/testSigningKey.p8'), "keyId", "issuerId", "bundleId");
-        const signature = signatureCreator.createSignature('productId', true, 'transactionId')
+        const signature = await signatureCreator.createSignature('productId', true, 'transactionId')
         expect(signature).toBeTruthy()
         let header = JSON.parse(Buffer.from(signature.split('.')[0], 'base64url').toString())
         let payload = JSON.parse(Buffer.from(signature.split('.')[1], 'base64url').toString())
@@ -67,7 +67,7 @@ describe("JWS Signature Creator Checks", () => {
         let request: TestInAppRequest = {
             testValue: "testValue"
         }
-        const signature = signatureCreator.createSignature(request)
+        const signature = await signatureCreator.createSignature(request)
         expect(signature).toBeTruthy()
         let header = JSON.parse(Buffer.from(signature.split('.')[0], 'base64url').toString())
         let payload = JSON.parse(Buffer.from(signature.split('.')[1], 'base64url').toString())
